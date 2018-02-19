@@ -1,24 +1,8 @@
 ---
 title: "Chapter_10_R_for_Data_Science"
-author: "Trevor Barnes"
+author: 
 date: "November 29, 2017"
 output: html_document
-params:
-  minimum: 
-    label: "Minimum:"
-    value: 100
-    input: slider
-    min: 0
-    max: 1000
-  region:
-    label: "Region:"
-    value: east
-    input: select
-    choices: [east, west, north, south]
-  data: 
-    label: "Input dataset:"
-    value: results.csv
-    input: file
 ---
 ---
 
