@@ -3,7 +3,6 @@ title: 'Chapter1: Data Visualization with ggplot2'
 author: 
 date: "11/17/2017"
 output: html_notebook
-runtime: shiny
 ---
 # Chapter 1 - Data Visualization with ggplot2
 
