@@ -1,6 +1,6 @@
 ---
 title: "CHAPTER 9: Tidy Data with tidyr"
-author: "Trevor Barnes"
+author: 
 date: "11/27/2017"
 output: html_document
 ---
