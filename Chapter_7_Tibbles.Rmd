@@ -1,6 +1,6 @@
 ---
 title: 'Chapter 7: Data Visualization with ggplot2'
-author: "Trevor Barnes"
+author: 
 date: "11/19/2017"
 output: html_document
 ---
