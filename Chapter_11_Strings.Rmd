@@ -1,0 +1,563 @@
+---
+title: "Chapter_11_R_for_Data_Science"
+author: "Trevor Barnes"
+date: "November 30, 2017"
+output: html_document
+---
+
+# Chapter 11: Stings with stringr
+
+```{r}
+
+library(tidyverse)
+library(stringr)
+
+```
+
+## String Basics
+
+```{r}
+
+## You can either create a string using double quotes or single quotes
+
+string1 <- "This is a string"
+
+string2 <- 'To put a "quote" inside a string, use single quotes'
+
+## If you need to include a backslash in R you will need to use a \\ because a single \ escapes your quote
+
+## Beware of printed representations of the strings and use 'writeLines()' to view the raw data
+
+x <- c("\"", "\\")
+
+x
+
+writeLines(x)
+
+## There are a handful of other special characters the most common being "\n" for new line and "\t" for new tab. You will also see special characters that are used to write common non-english characters
+
+x <- "\u00b5"
+
+x
+
+## Multiple strings are stored in a character vector
+
+x <- c("one", "two", "three")
+
+```
+
+## String Length
+
+```{r}
+
+## Use 'str_length()' for string length
+
+str_length(c("a", "R for Data Sceince", NA))
+
+```
+
+## Combining Strings
+
+```{r}
+
+## To combine two or more strings use 'str_c()'
+
+str_c("x","y")
+
+str_c("x","y","z")
+
+## Use the 'sep()' argument to determine how they are sperated
+
+str_c("x", "y", sep = ", ")
+
+## Print missing values as "NA"
+
+x <- c("abc", NA)
+
+str_c("|-", x, "-|")
+
+str_c("|-", str_replace_na(x), "-|")
+
+## Automatically recycles shorter vectors to the length of longer vectors
+
+str_c("prefix-", c("a", "b", "c"), "-suffix")
+
+## Objects of length 0 are silently dropped. This is particularly useful in conjunction with if
+
+name <- "Hadley"
+time_of_day <- "morning"
+birthday <- FALSE
+
+str_c(
+  "Good", time_of_day, "", name, 
+  if (birthday) "and HAPPY BIRTHDAY", "."
+)
+
+## To collapse a vector of strings into a single string, use 'collapse()'
+
+str_c(c("x", "y", "z"), collapse = ", ")
+
+```
+
+## Subsetting Strings
+
+```{r}
+
+## Extract parts of strings using "str_sub()" 
+
+x <- c("Apple", "Banana", "Pear")
+
+str_sub(x, 1, 3)
+
+## Negative numbers count backwards
+
+str_sub(x, -1, -3)
+
+## str_sub() will not fail if the string is too short
+
+str_sub("a", 1, 5)
+
+## You can also use the assignment form of str_sub() to modify strings
+
+str_sub(x, 1, 1)<- str_to_lower(str_sub(x, 1, 1))
+```
+
+## Locales
+
+```{r}
+
+## str_to_lower() to change to lower case, you can use str_to_upper() and str_to_title()
+
+str_to_upper(c("i", "l"))
+
+str_to_upper(c("i", "l"), locale = "tr")
+
+## You can change sort order based on locale
+
+x <- c("apple", "eggplant", "banana")
+
+str_sort(x, locale = "en")
+
+str_sort(x, locale = "haw")
+```
+
+## Matching Patterns with Regular Expressions
+
+## Basic Matches
+
+```{r}
+
+## The simplest patterns match exact strings
+
+x <- c("apple", "banana", "pear")
+str_view(x, "an")
+
+## The next step up is complexity is ".", which matches any character (except a new line)
+
+str_view(x, ".a.")
+
+## But if "." mathces any character, then how do you match ".". You need to use an escape aka a "\\"
+
+dot <- "\\."
+
+writeLines(dot)
+
+str_view(c("abc", "a.c", "bef"), "a\\.c")
+
+## If "\" is used as an escape character in regular expressions, how do you match a literal "\"? You need a string which also needs an escape so you need to write "\\\\"
+
+x <- "a\\b"
+writeLines(x)
+
+str_view(x, "\\\\")
+```
+
+## Anchors
+
+```{r}
+
+## "^" to match the start of a string
+## "$" to match the end of a string
+
+x <- c("apple", "banana", "pear")
+
+str_view(x, "^a")
+
+str_view(x, "a$")
+
+## To force a regular expression to only match a specific complete string, anchor is with both "^" and "$"
+
+x <- c("apple pie", "apple", "apple cake")
+
+str_view(x, "apple")
+
+str_view(x, "^apple$")
+```
+
+## Character Classes and Alternatives
+
+```{r}
+
+## \d matches and digit
+## \s matches and whitespace (e.g., space, tab, newline)
+## [abc] matches a, b, or c
+## [^abc] matches anything except a, b, or c
+
+## Multiple spellings
+
+str_view(c("grey", "gray"), "gr(e|a)y")
+```
+
+## Repitition
+
+```{r}
+
+## The next step is to control how many times a pattern matches
+
+## ?: 0 or 1
+## +: 1 or more
+## *: 0 or more
+
+x <- "1888 is the longest year in the Roman numerals: MDCCCXXXVIII"
+
+str_view(x, "CC?")
+
+str_view(x, "CC+")
+
+str_view(x, "C[LX]+")
+
+## You can also specify the number of matches precisely
+
+## {n}: exactly n
+## {n,}: n or more
+## {,m}: at most m
+## {n,m}: between n and m
+
+## By default the matches are "greedy": they will match the longest string possible. You can make them "lazy" match the shortest string possible by putting a "?" after them.
+
+str_view(x, 'C{2,3}?')
+
+str_view(x, 'C[LX]+?')
+```
+
+## Grouping and Backreferences
+
+```{r}
+
+## You learned about parathenses as a way to disambiguate complex expressions. They also define "groups" that you can refer to with backreferences, like \1, \2
+
+str_view(fruit, "(..)\\1", match = TRUE)
+```
+
+## Detect Matches
+
+```{r}
+
+## To determine if a character vector matches a pattern, use str_detect()
+
+x <- c("apple", "banana", "pear")
+
+str_detect(x, "e")
+
+## How many words start with "t"
+
+sum(str_detect(words, "^t"))
+
+## What proportion of common words end with a vowel?
+
+mean(str_detect(words, "[aeiou]$"))
+
+## Here is two ways to find all words that don't contain any vowels
+
+no_vowels_1 <- !str_detect(words, "[aeiou]")
+
+no_vowels_2 <- str_detect(words, "^[^aeiou]+$")
+
+identical(no_vowels_1, no_vowels_2)
+
+## A common use of str_detect() is to select the elements that match a pattern
+
+words[str_detect(words, "x$")]
+
+str_subset(words, "x$")
+
+## Typically your strings will be contained in one column of a data frame and you will want to use filter instead
+
+df <- tibble(
+  word = words,
+  i = seq_along(word)
+)
+
+df %>%
+  filter(str_detect(words, "x$"))
+
+## A variation on str_detect() is str_count(): rahter than a simple yes or no, it tells you how many matches are in a string
+
+x <- c("apple", "banana", "pear")
+
+str_count(x, "a")
+
+mean(str_count(words, "[aeiou]"))
+
+## It is natural to use str_count() with mutate()
+
+df %>%
+  mutate(
+    vowels = str_count(word, "[aeiou]"),
+    consonants = str_count(word, "[^aeiou]")
+  )
+
+## Note that matches overlap
+
+str_count("abababa", "aba")
+
+str_view_all("abababa", "aba")
+```
+
+## Extract Matches
+
+```{r}
+
+## to extract the actuial text of a match, use str_extract()
+
+length(sentences)
+
+head(sentences)
+
+## Imangine we want to find all sentences that contain a color, we first create a vector of color names and turn it into a regualr expression
+
+colors <- c("red", "orange", "yellow", "green", "blue", "purple")
+
+color_match <- str_c(colors, collapse = "|")
+
+color_match
+
+## Now we can select the sentences that contain a color and the extract
+
+has_color <- str_subset(sentences, color_match)
+
+matches <- str_extract(has_color, color_match)
+
+head(matches)
+
+## Note that we can only see the color
+
+more <- sentences[str_count(sentences, color_match) > 1]
+
+str_view_all(more, color_match)
+
+str_extract(more, color_match)
+
+## To get all matches, instead of just one match use
+
+str_extract_all(more, color_match)
+
+## If you put simplify = TRUE you can turn it into a matrix
+
+str_extract_all(more, color_match, simplify = TRUE)
+
+x <- c("a", "a b", "a b c")
+
+str_extract_all(x, "[a-z]", simplify = TRUE)
+```
+
+## Group Matches
+
+```{r}
+
+## You can use parentheses to extract part of a complex match, lets define a string variable (a or the at the start)
+
+noun <- "(a|the) ([^ ]+)"
+
+has_noun <- sentences %>%
+  str_subset(noun) %>%
+  head(10)
+
+has_noun %>%
+  str_extract(noun)
+
+## str_extract() gives you the complete match but using str_match will give you the individual components
+
+has_noun %>%
+  str_match(noun)
+
+## If your data is in a tibbleits often easier to use tidyr::extract(), which works like str_match() but requires you to name the matches, which are then placed into new columns
+
+tibble(sentence = sentences) %>%
+  tidyr::extract(
+    sentence, c("article", "noun"), "(a|the) ([^ ]+)",
+    remove = FALSE
+  )
+
+```
+
+## Replacing Matches
+
+```{r}
+
+## str_replace() and str_replace_all() allows you to replace matches with new strings. The simplest use is to replace a pattern with a fixed string
+
+x <- c("apple", "pear", "banana")
+str_replace(x, "[aeiou]", "-")
+
+## now lets replace all vowels
+
+str_replace_all(x, "[aeiou]", "-")
+
+## You can also replace multiple with str_replace_all()
+
+x <- c("1 house", "2 cars", "3 people")
+str_replace_all(x, c("1" = "one", "2" = "two", "3" = "three"))
+
+## Instead of replacing with a fixed string you can use back references to insert components of the match
+
+sentences %>%
+  str_replace("([^ ]+) ([^ ]+) ([^ ]+)", "\\1 \\3 \\2") %>%
+  head(5)
+```
+
+## Splitting
+
+```{r}
+
+## Use str_split to split a string into pieces
+
+sentences %>%
+  head(5) %>%
+  str_split(" ")
+
+## Because each component may contain a different number of pieces, this returns a list, if you are working wiht 1-length vector, the easiest thing is to just extract the first element of the list
+
+"a|b|c|d" %>%
+  str_split("\\|") %>%
+  .[[1]]
+
+## You can also use "simplify = TRUE" to turn into a matrix
+
+sentences %>%
+  head(5) %>%
+  str_split(" ", simplify = TRUE)
+
+## You can also request a maximum number of pieces
+
+fields <- c("Name: Hadley", "Country: NZ", "Age:35")
+
+fields %>%
+  str_split(": ", n = 2, simplify = TRUE)
+
+## Instead of splitting strings by patterns, you can also split by char, line,sentence, and word boundaries
+
+x <- "This is a sentence. This is another sentence"
+
+str_view_all(x, boundary("word"))
+
+str_split(x, " ")[[1]]
+
+str_split(x, boundary("word"))[[1]]
+
+```
+
+## Other types of patterns
+
+```{r}
+
+## When you use a pattern thats a string, it is autimatically wrapped into a call to "regex()"
+
+## regualr call
+str_view(fruit,"nana")
+
+## is shorthand for
+str_view(fruit,regex("nana"))
+
+## You can also use it to ignore case
+
+bananas <- c("banana", "Banana", "BANANA")
+
+str_view(bananas, "banana")
+
+str_view(bananas, regex("banana", ignore_case = TRUE))
+
+## Multiline = TRUE allows ^ and $ to matchthe start and end of each line rather that the start and end of the complete string
+
+x <- "Line 1\nLine 2\nLine 3"
+
+str_extract_all(x, "^Line")[[1]]
+
+str_extract_all(x, regex("^Line", multiline = TRUE))[[1]]
+
+## comments = TRUE allows you to use comments and white spaces to make a complex regular expressions more understandable. Spaces are ignored, as is everything after #. to match a literal space, youll need to escape it: "\\ "
+
+phone <- regex("
+               \\(?     # optional opening parens
+               (\\d{3}) # area code
+               [)- ]?   # optional closing parens, dash, or space
+               (\\d{3}) # another 3 numbers
+               [ -]?    # optional space or dash
+               (\\d{3}) # 3 more numbers
+               ", comments = TRUE)
+
+str_match("514-791-8141", phone)
+
+## dotall = TRUE allows . to match everything, including \n.
+
+## There are 3 other functions you can use instead of regex()
+
+## fixed() matches exactly the specified sequence of bytes. It ignores all special regular expressions and operates at a very low level. This allows you to avoid complex escapingand can be much faster than regular expressions. The microbenchmark shows it is about 3x's faster for a simple example
+
+microbenchmark::microbenchmark(
+  fixed = str_detect(sentences, fixed("the")), 
+  regex = str_detect(sentences, "the"),
+  times = 20
+)
+
+## Beware using "fixed()" with non-english data
+
+a1 <- "\u00e1"
+a2 <- "a\u0301"
+
+c(a1, a2)
+
+a1 == a2
+
+str_detect(a1, fixed(a2))
+
+str_detect(a1, coll(a2))
+
+## "coll()" compares strings using the standard collation rules. This is useful for doing case sensitive matching
+
+i <- c("I", "I", "i", "i")
+i
+
+str_subset(i, coll("i", ignore_case = TRUE))
+
+str_subset(
+  i,
+  coll("i", ignore_case = TRUE, locale = "tr")
+)
+
+## Both fixed() and regex() have ignore_case arguments, but they do not allow you to pick the locale, they always use the default locale
+
+stringi::stri_locale_info()
+
+## As with str_split() you can use boundary() ti match boundaries 
+
+x <- "This is a sentence."
+
+str_view_all(x, boundary("word"))
+
+str_extract_all(x, boundary("word"))
+
+```
+
+## Other Uses of Regualr Expressions
+
+```{r}
+
+## apropos() searches all objects available from the global environment. This is useful if you can't remember the name of a function
+
+apropos("replace")
+
+## dir() lists all the files in a directory, the paatern argument takes a regular expression and only returns filenames that match the pattern
+
+head(dir(pattern = "\\.Rmd$"))
+```

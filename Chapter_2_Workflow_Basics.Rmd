@@ -1,0 +1,58 @@
+---
+title: "Chapter_2_R_for_Data_Science"
+author: "Trevor Barnes"
+date: "11/17/2017"
+output: html_document
+runtime: shiny
+---
+# Chapter 2 - Workflow: Basics
+
+## Coding Basics
+```{r, error=TRUE}
+## R can be used as a calculator 
+
+1/200*30
+
+(59 + 73 + 2) / 3 
+
+sin(pi / 2)
+
+## You can create new objects with <-
+
+x <- 3 * 4
+
+print(x)
+
+## Be careful of typos
+
+r_rocks <- 2 ^ 3
+
+## r_rock, as an example, will result in an error
+
+r_rock
+```
+
+## Calling Functions
+
+```{r}
+## Run a sequence function 1-10, notice how the parentheses autofills and lists details to that function
+
+seq(1,10)
+
+## Quotations auto double, also. If you don't close the parantheses R will continue the script
+
+x <- "Hello World"
+
+## Once you create a variable, you can type the variable in order to view the result
+
+y <- seq(1, 10, length.out = 5)
+y
+
+## Or, you can start the variable with an open parentheses to immediately show the result
+
+(y <- seq(1, 10, length.out = 5))
+```
+
+
+
+

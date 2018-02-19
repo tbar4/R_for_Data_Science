@@ -1,0 +1,263 @@
+---
+title: "CHAPTER 9: Tidy Data with tidyr"
+author: "Trevor Barnes"
+date: "11/27/2017"
+output: html_document
+---
+
+# Chapter 9: Tidy Data with tidyr
+
+```{r}
+
+## Load the tidyverse
+
+library(tidyverse)
+library(stringr)
+table1
+table2
+table3
+table4a
+table4b
+
+## Remember the 3 rules that are interrelated and make data tidy
+
+  ## 1) Each variable must have its own column
+  ## 2) Each observation must have its own row
+  ## 3) Each value must have its own cell
+
+## Which leads to the following
+
+  ## 1) Put each dataset into a tibble
+  ## 2) Put each variable into a column
+
+## Here is a couple ways to tidy table 1
+
+table1 %>%
+  mutate(rate=cases / population *10000)
+
+## Compute cases per year
+
+table1 %>%
+  mutate(year, wt = cases)
+
+## Visualize changes over time
+
+library(ggplot2)
+ggplot(table1, aes(year, cases)) +
+  geom_line(aes(group = country), color = "grey50") +
+  geom_point(aes(color=country))
+
+```
+
+## Spreading and Gathering
+
+## Gather
+
+```{r}
+
+## Gathering - a lot of times you will receive data where column names are not the names of variables, but values of the variables, to correct this use 'gather()'
+
+table4a
+
+tidy4a <- table4a %>%
+  gather(`1999`, `2000`, key = "year", value = "cases")
+
+## Lets do the same for table 4b
+
+table4b
+
+tidy4b <- table4b %>%
+  gather(`1999`,`2000`, key = "year", value = "population")
+
+## Now lets combine the data into one table using left join
+
+left_join(tidy4a,tidy4b)
+
+```
+
+## Spread
+
+```{r}
+
+## Spreading is the opposite of gathering, for example in table 2 an observation is a country in a year, but it is spread across two rows. The column that contains the variables names is the key column and in this case its 'type'. The column that contains the values is the count column.
+
+spread(table2, key = type,value = count)
+
+```
+
+## Separating and Pulling
+
+## Separate
+
+```{r}
+
+## 'seperate()' pulls apart once column into multiple columns
+
+table3
+
+## The rate column contains both cases and population, so lets separate them
+
+table3 %>%
+  separate(rate, into = c("cases","population"))
+
+## By default, 'separate()' will separate where there is non-alphanumeric, but if you wish to specify, you can write the following
+
+table3 %>%
+  separate(rate, into = c("cases","population"), sep = "/")
+
+## If you noticed, cases and population where 'char', but we want them to be numbers, in that case set 'convert =' to 'TRUE'
+
+table3 %>%
+  separate(
+    rate, 
+    into = c("cases", "population"),
+    convert = TRUE
+  )
+
+## You can also separate the variables of columns into two separate columns
+
+table3 %>%
+  separate(year, into = c("century","year"), sep = 2)
+
+```
+
+## Unite
+
+```{r}
+
+## 'unite()' is the inverse of seperate in that it combines multiple columns
+
+table5
+
+table5 %>%
+  unite(new, century, year)
+
+## In this case we will also need a 'sep = ' argument as the function defaults to an "_"
+
+table5 %>%
+  unite(new, century, year, sep = "")
+
+```
+
+## Missing Values
+
+```{r}
+
+## Explicitly missing values (presence of an absence): 'NA'. Implicitly missing values (absence of a presence): simply not present in the data.
+
+## Lets illustrate this idea
+
+stocks <- tibble(
+  year = c(2015,2015,2015,2015,2016,2016,2016),
+  qtr = c(1,2,3,4,2,3,4),
+  return = c(1.88,.59,.35,NA,.92,.17,2.66)
+)
+
+## The two missing variables are the 1st quarter (implicit) of 2016 and the NA (explicit) in the return, but the tibble will show both as explicit
+
+stocks %>%
+  spread(year,return)
+
+## In this case it may be a good idea to use 'na.rm = TRUE'
+
+stocks %>%
+  spread(year,return)%>%
+  gather(year, return, `2015`:`2016`, na.rm = TRUE)
+
+## Another important tool for making missing values explicit is 'complete()'
+
+stocks %>%
+  complete(year,qtr)
+
+## It is important to note that sometimes when a data source has been primarily used for data entry it is common for a source to be carried forward
+
+treatment <- tribble(
+  ~ person,                 ~ treatment,  ~ response,
+  "Derrick Whitmore",       1,            7,
+  NA,                       2,            10,
+  NA,                       3,            9,
+  "Katherine Burke",        1,            4
+)
+
+## You can now fill these missing columns with 'fill()'
+
+treatment %>%
+  fill(person)
+
+```
+
+# cASE STUDY
+
+```{r}
+
+# This is the WHO organization data regarding TB, there is a lot of good data but it is hard to work with
+
+who
+
+# This is hard to read in the output, so I like to give it a spreadsheet look using the following
+
+View(who)
+
+# It appears that a lot of the data is missing and some of it is redundant
+
+who1 <- who %>%
+  gather(
+    new_sp_m014:newrel_f65, key = "key",
+    value = "cases",
+    na.rm = T)
+
+# We can get a hint of the structure of the values in the new key column by counting them
+
+who1 %>%
+  count(key)
+
+# The data is based on a code
+# The first 3 letters determine whether new or old
+# The next two letters tell the type of TB
+# The sixth letter gives you the sex of the patient
+# The remaining numbers give you age group
+
+# There were a couple errors where 'newrel' should have been 'new_rel' in this case we will have to use 'str_replace()'
+
+who2 <- who1 %>%
+  mutate(key = str_replace(key,"newrel","new_rel"))
+
+who2
+
+# We can now separate out all of the other information
+
+who3 <- who2 %>%
+  separate(key, c("new","type","sexage"), sep = "_")
+
+who3
+
+# Lets drop some columns, like new since it is constant in the dataset
+
+who3 %>%
+  count(new)
+
+# Lets drop the redundant country codes
+
+who4 <- who3 %>%
+  select(-new, -iso2, -iso3)
+
+# We will now separate sexage
+
+who5 <- who4 %>%
+  separate(sexage, c("sex", "age"), sep = 1)
+
+who5
+
+# This code was chunked out for easy viewing, but you should next work on rolling it all into 1 chunk of code like below
+
+who %>%
+  gather(code,value,new_sp_m014:newrel_f65,na.rm = T) %>%
+  mutate(
+    code = str_replace(code,"newrel","new_rel")
+  ) %>%
+  separate(code,c("new","var","sexage")) %>%
+  select(-new,-iso2,-iso3) %>%
+  separate(sexage, c("sex","age"),sep = 1)
+```
+
+

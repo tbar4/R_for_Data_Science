@@ -1,0 +1,300 @@
+---
+title: 'Chapter1: Data Visualization with ggplot2'
+author: "Trevor Barnes"
+date: "11/17/2017"
+output: html_notebook
+runtime: shiny
+---
+# Chapter 1 - Data Visualization with ggplot2
+
+## Introduction
+
+```{r}
+## Load the Library needed, in this case 'tidyverse'
+## If you do not have the package, install package with 'install.package('tidyverse')
+
+library(tidyverse)
+```
+
+## First Steps
+
+```{r}
+## Create your first plot
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x= displ, y=hwy))
+
+## The standard template is 
+## ggplot(data <DATA>)
+##    <GEOM_FUNCTION>(mapping = aes(<MAPPINGS>))
+```
+
+## Aesthetic Mappings
+
+```{r}
+## You can add color to your data points
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x=displ,y=hwy,color=class))
+
+## You can change the size of your data points
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x=displ,y=hwy, size=class))
+
+## You can change the transparency of the points with alpha
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x=displ,y=hwy, alpha=class))
+
+## You can also change the shape
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x=displ,y=hwy,shape=class))
+
+## You can also determine specific colors, like blue
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x=displ,y=hwy,color = "blue"))
+
+## Make sure that you place symbols in the correct location, for instance the following will result in an error:
+
+## ggplot(data = mpg)
+##  + geom_point(mapping = aes(x=displ,y=hwy))
+```
+
+## Facets
+
+```{r}
+## To Facet your variables use the 'facet_wrap' argument. The first argument is your formula (formula is the name of a data structure in R) which you create with a '~' (Tilde is used to separate the left- and right-hand sides in a model formula. EX. y ~ model) followed by a variable name. In this case, I am creating 2 rows with 'nrow = 2'.
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy)) +
+  facet_wrap(~ class, nrow = 2)
+
+## If you want to facet your graph based on a multitude of variables use 'facet_grid()'
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y =hwy)) +
+  facet_grid(drv ~ cyl)
+```
+
+## Geometric Objects
+
+```{r}
+## Use different 'geom_xxxx' formulas to generate the best possible graph for your data
+
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy))
+
+## Smooth out all points on the graph with 'geom_smooth'
+
+ggplot(data = mpg) +
+  geom_smooth(mapping = aes(x = displ, y = hwy))
+
+## To make it more aesthetic to your data, use linetype to seperae major variables
+
+ggplot(data = mpg) +
+  geom_smooth(mapping = aes(x = displ, y = hwy, linetype = drv))
+
+## Group the above plot by drive
+
+ggplot(data = mpg) +
+  geom_smooth(mapping = aes(x = displ, y = hwy, group = drv))
+
+## Color the lines by drive and remove the legend
+
+ggplot(data = mpg) + 
+  geom_smooth(mapping = aes(x = displ, y = hwy),
+              show.legend = FALSE
+              )
+
+## Now, create multiple plots in the same graph
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy)) +
+  geom_smooth(mapping = aes(x = displ, y = hwy))
+
+## But this created rework in typing the same data points for x and y, now try it this way:
+
+ggplot(data = mpg, mapping = aes(x = displ,y = hwy))+
+  geom_point()+
+  geom_smooth()
+
+## Now try aesthetics in different layers
+
+ggplot(data = mpg, mapping = aes(x = displ,y = hwy)) +
+  geom_point(mapping = aes(color = class))+
+  geom_smooth()
+
+## Try getting select data in the plots, in this case subcompact
+
+ggplot(data = mpg, mapping = aes(x = displ,y = hwy)) +
+  geom_point(mapping = aes(color = class)) +
+  geom_smooth(
+    data = filter(mpg, class == "subcompact"),
+    se = FALSE
+  )
+```
+
+## Statistical Transformations
+
+```{r}
+## Plot a bar chart with the 'diamonds' data and using 'geom_bar'
+
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut))
+
+## A lot of times you can use 'geom_'s' and stats interchangeablly
+
+ggplot(data = diamonds) +
+  stat_count(mapping = aes(x = cut))
+
+## If you want to override the default stat, as in the following example
+
+demo <- tribble(
+  ~a,      ~b,
+  "bar_1", 20,
+  "bar_2", 30,
+  "bar_3", 40
+)
+
+ggplot(data = demo) +
+  geom_bar(
+    mapping = aes(x = a,y = b), stat = "identity"
+  )
+
+## You can also override default mapping for transformed variables of statistics, for example you might want to display a bar chart of proportion, rather than count:
+
+ggplot(data = diamonds) +
+  geom_bar(
+    mapping = aes(x = cut, y = ..prop.., group = 1)
+  )
+
+## If you want to view the statistical transformation for your code, in this instance we will use 'stat_summary' to summarize unique y values for each unique x
+
+ggplot(data = diamonds) +
+  stat_summary(
+    mapping = aes(x = cut, y = depth),
+    fun.ymin = min, 
+    fun.ymax = max,
+    fun.y = median
+  )
+```
+
+# Position Adjustments
+
+```{r}
+## You can color a bar chart by using either 'color' or 'fill'
+
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut, color = cut))
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut, fill = cut))
+
+## Notice what happens when you have two different variables
+
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut, fill = clarity))
+
+## Test for different alphas and no fill
+
+ggplot(
+  data = diamonds, 
+  mapping = aes(x = cut, fill = clarity)
+) +
+  geom_bar(alpha = 1/5, position = "identity")
+
+ggplot(
+  data = diamonds,
+  mapping = aes(x = cut, color = clarity)
+) +
+  geom_bar(fill = NA, position = "identity")
+
+## You can also fill the whole graph based on proportion
+
+ggplot(data = diamonds) +
+  geom_bar(
+    mapping = aes(x = cut, fill = clarity),
+    position = "fill"
+  )
+
+## You can also 'dodge the bars if you do not want them to overlap
+
+ggplot(data = diamonds) +
+  geom_bar(
+    mapping = aes(x = cut, fill = clarity),
+    position = "dodge"
+  )
+
+## In order to view the data in it's most raw form, instead of it 'snapping to the grid' you can jitter the data
+
+ggplot(data = mpg) + 
+  geom_point(
+    mapping = aes(x = displ, y = hwy),
+    position = "jitter"
+  )
+```
+
+## Coordinate Systems
+
+```{r}
+## You can flip your chart 90 degrees to make the data easier to view using 'coord_flip'
+
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) +
+  geom_boxplot()
+
+## Flip it
+
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) +
+  geom_boxplot() + 
+  coord_flip()
+
+## You can also apply coordinates to maps
+
+nz <- map_data("nz")
+
+ggplot(nz, aes(long,lat, group = group)) +
+  geom_polygon(fill = "white", color = "black")
+
+## That doesn't loo aesthetic, so we will add 'coord_quickmap'
+
+ggplot(nz, aes(long,lat, group = group)) +
+  geom_polygon(fill = "white", color = "black") +
+  coord_quickmap()
+
+## 'coord_polar' reveals the connection btween a bar chart and a Coxcomb chart
+
+bar <- ggplot(data = diamonds) +
+  geom_bar(
+    mapping = aes(x = cut, fill = cut),
+    show.legend = FALSE,
+    width = 1
+  ) +
+  theme(aspect.ratio = 1) +
+  labs(x = NULL, y = NULL)
+
+## test with coord_flip
+
+bar + coord_flip()
+
+## Test with coord_polar
+
+bar + coord_polar()
+```
+
+## The Layered Grammar of Graphics
+
+#### The following is a good refernce to remember how charts are plotted
+
+```{r}
+## ggplot(data = <DATA>) +
+##   <GEOM_FUNCTION>(
+##     mapping = aes(<MAPPINGS>),
+##     stat = <STAT>,
+##     position = <POSITION>
+##   ) +
+##   <COORDINATE_FUNCTION> + 
+##   <FACET_FUNCTION>
+```
+  

@@ -1,0 +1,339 @@
+---
+title: "Chapter_10_R_for_Data_Science"
+author: "Trevor Barnes"
+date: "November 29, 2017"
+output: html_document
+params:
+  minimum: 
+    label: "Minimum:"
+    value: 100
+    input: slider
+    min: 0
+    max: 1000
+  region:
+    label: "Region:"
+    value: east
+    input: select
+    choices: [east, west, north, south]
+  data: 
+    label: "Input dataset:"
+    value: results.csv
+    input: file
+---
+---
+
+# CHAPTER 10: RELATIONAL DATA WITH dplyr
+
+## Introduction
+
+```{r, warning=FALSE}
+
+## It is rare that your dataset will only come from 1 table, in most instances it will come from multiple tables and these tables are called 'Relational Data' because it is the relations and not the data that is important
+
+## There are 3 families of verbs that are designed to work with relational data:
+
+  ## 1) Mutating Joins - which add new variables to on data frame by mathcing observations in another
+
+  ## 2) Filtering Joins - which filter observations from one data frame based on whether or not they match an observation in another           table
+
+  ## 3) Set Operations - which treat observations as if they were set elements
+
+library(tidyverse)
+library(nycflights13)
+library(stringr)
+
+```
+
+## NYCFlights13
+
+```{r}
+
+## Airlines lets you look at the full carrier name from its abbreviated code
+
+airlines
+
+## Airports gives you information about each airport based on the faa code
+
+airports
+
+## Planes gives you information about each plane ident by its tailnum
+
+planes
+
+## Weather gives you weather at each NYC airport for each hour
+
+weather
+
+## Flights connects to planes via tailnum
+## Flights connects to airlines through carrier
+## Flights connects to airports via origin and dest
+## Flights connects to weather via origin, year, month, day, hour
+
+```
+
+## Keys
+
+```{r}
+
+## The variable used to connect each pair in a table is called a key. A key is a variable (or set of variables) that uniquely identifies an observation.
+
+## There are two types of keys
+
+  ## 1) Primary Key - uniquely identifies an observation in its own table, for example, planes$tailnum is a primary key because it           uniquely identifies each plane in the planes table
+
+  ## 2) Foreign Key - uniquely identifies an observation in another table, for example, flights$tailnum is a foreign key because it          appears in the flights table where it matches it flight to a unique plane
+
+## A variable can be both a promary key and a foreign key, for example origin in a primary key in the weather table, but is also foreign key for the airport table.
+
+## Once you have identified primary keys in your tables its a good pratice to verify that they are unique by using the 'count()' function
+
+planes %>%
+  count(tailnum) %>%
+  filter(n>1)
+
+## Check weather
+
+weather %>%
+  count(year, month, day, hour, origin) %>%
+  filter(n>1)
+
+## Sometimes a table doesn't have an explicit primary key
+
+flights %>%
+  count(year, month, day, flight) %>%
+  filter(n>1)
+
+## Check by tailnum
+
+flights %>%
+  count(year, month, day, tailnum) %>%
+  filter(n>1)
+
+## If a table lacks a primary key, it is sometimes useful to add one with 'mutate()' and 'row_number()' and this is called a surrogate key.
+
+## A primary key and the corresponding foreing key in another table form a relation. Relations are typically one to many. For example, each flight has only one plane, but one plane may have many flights.
+```
+
+## Mutating Joins
+
+```{r}
+
+## A mutating join allows you to combine variables from two tables.
+
+flights2 <- flights %>%
+  select(year:day, hour, origin, dest, tailnum, carrier)
+
+flights2
+
+## You just narrowed down the data to make it easier to view your join, now do the join. The end goal is to add the full airline name to the flights2 data.
+
+flights2 %>%
+  select(-origin, -dest) %>%
+  left_join(airlines, by = "carrier")
+
+## The result is an additional variable called 'name', you can also do the same join this way, but it is more confusing
+
+flights2 %>%
+  select(-origin, -dest) %>%
+  mutate(name =airlines$name[match(carrier, airlines$carrier)])
+
+```
+
+## Understanding Joins
+
+```{r}
+
+## To help better understand joins, we will make a simple tables
+
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     3, "x3"
+)
+
+y <- tribble(
+  ~key, ~val_x,
+     1, "y1",
+     2, "y2",
+     4, "y3"
+)
+
+## The simplest join is an inner join, which matches pairs of observations whenever their values are equal. The output of the inner join is a new data frame with the key, x-values, and y-values.
+
+x %>%
+  inner_join(y, by = "key")
+
+## The inner join keeps observations from both tables while an outter joins keeps variables that appear in at least one table
+
+## A left join keeps all observations in x
+## A right join keeps all observations in y
+## A full (inner) join keeps all observations in both x and y
+
+```
+
+## Duplicate Keys
+
+```{r} 
+
+## Duplicate keys are useful when you want additional information
+
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     2, "x3",
+     1, "x4"
+)
+
+y <- tribble(
+  ~key, ~val_x,
+     1, "y1",
+     2, "y2"
+)
+
+left_join(x,y, by = "key")
+
+## Another example
+
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     2, "x3",
+     3, "x4"
+)
+
+y <- tribble(
+  ~key, ~val_x,
+     1, "y1",
+     2, "y2",
+     2, "y3",
+     3, "y4"
+)
+
+left_join(x,y, by = "key")
+
+```
+
+## Defining the Key Columns
+
+```{r}
+
+## So far we have only used 'key' to connect, but you can also connect by other variables. the default variable is 'by = NULL' which uses all variables that appear in both tables, the so-called 'natural join'. For example, flights and weather match on their common variables year, month, day, hour, and origin.
+
+flights2 %>%
+  left_join(weather)
+
+## A character vector, 'by = "x"', which is like a natural join, but uses only some of the common variables. For example, flights and planes have year variables, but they mean different things, so we only want to match tailnum variables. Notice that their will be a year.x and a year.y.
+
+flights2 %>%
+  left_join(planes, by = "tailnum")
+
+## A named character vector, by = c("a" = "b"). This will match variable a in x to variable b in y and the variables from x will be used as the output.
+
+flights2 %>%
+  left_join(airports, by = c("dest" = "faa"))
+
+flights2 %>%
+  left_join(airports, by = c("origin" = "faa"))
+
+```
+
+## Other Implementations
+
+```{r}
+
+## Base::merge can perform the same types of joins
+
+## dplyr              |      merge
+## -----------------------------------------------
+## inner_join(x, y)   | merge(x, y)
+##                    |  
+## left_join(x, y)    | merge(x, y, all.x = TRUE)
+##                    |
+## right_join(x, y)   | merge(x, y, all.y = TRUE)
+##                    |
+## full_join(x, y)    | merge(x, y, all.x = TRUE, all.y = TRUE)
+
+## SQL was the inspiration for dplyr conveentions so the translation is straight forward
+
+## dplyr                           |      SQL
+## -----------------------------------------------
+## inner_join(x, y, by = "z")      | SELECT * FROM x INNER JOIN y USING (z)
+##                                 |  
+## left_join(x, y, by = "z"))      | SELECT * FROM x LEFT OUTER JOIN y USING (z)
+##                                 |
+## right_join(x, y, by = "z")))    | SELECT * FROM x RIGHT OUTER JOIN y USING (z)
+##                                 |
+## full_join(x, y, by = "z")))     | SELECT * FROM x FULL OUTER JOIN y USING (z)
+  
+  
+```
+
+## Filtering Joins
+
+``` {r}
+
+## Filtering joins match observations in the same way as mutating joins, but affect the observations and not the variables. There are two types
+
+  ## semi_join(x, y) - keeps all observations in x that have a match in y
+  ## anti_join(x, y) - drops all observations in x that have a match in y
+
+## Semi joins are useful for matching filtered summary tables back to the original rows. For example, you found the top 10 most popular destinations
+
+top_dest <- flights %>%
+  count(dest, sort = TRUE) %>%
+  head(10)
+
+## Now you want to find the each flight that went to one of those destinations
+
+flights %>%
+  filter(dest %in% top_dest$dest)
+
+## Instead, you can use a semi-join which brings the tables together like a mutating join.
+
+flights %>%
+  semi_join(top_dest)
+
+## Anti joins are useful for finding mismatches. For example, when connecting flights and planes, you may find that there are many flights that do not have a match in planes
+
+flights %>%
+  anti_join(planes, by = "tailnum") %>%
+  count(tailnum, sort = TRUE)
+
+```
+
+## Set Operations
+
+```{r}
+
+## The final type of two table verb is the set operations, used infrequently, but are good for breaking single complex filter into simpler ones. These expect x and y to have the same variables and treat observations like sets
+
+  ## instersect(x, y) - returns only observations in x and y
+  ## union(x, y) - return unique observations in x and y
+  ## setdiff(x, y) - return observations in x, but not y
+
+## Example set
+
+df1 <- tribble(
+  ~x, ~y,
+   1,  1,
+   2,  1
+)
+
+df2 <- tribble(
+  ~x, ~y,
+   1,  1,
+   1,  2
+)
+
+intersect(df1, df2)
+
+union(df1, df2)
+
+setdiff(df1, df2)
+
+setdiff(df2, df1)
+
+```

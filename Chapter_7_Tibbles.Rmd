@@ -1,0 +1,111 @@
+---
+title: 'Chapter 7: Data Visualization with ggplot2'
+author: "Trevor Barnes"
+date: "11/19/2017"
+output: html_document
+---
+# Chapter 7 - Tibbles with tibble
+
+## Introduction
+
+```{r}
+## Load the Library needed, in this case 'tidyverse'
+## If you do not have the package, install package with 'install.package('tidyverse')
+
+library(tidyverse)
+library(lubridate)
+```
+
+## Review Data Frames
+
+### We have been using tibbles instead of R' traditional 'data.frame()'. Tibbles are data frames, but make it easier to build data frames
+
+## Creating tibbles
+
+```{r}
+
+## The tidyr library automatically builds tibbles, but other packages generally use data frames. We will now turn a data frame into a tibble
+
+as_tibble(iris)
+
+## Create your own tibble with 'tibble()'
+
+tibble(
+  x = 1:5,
+  y = 1,
+  z = x ^ 2 + y
+)
+## If you are already familiar with data frames, note that tibble does not convert strings to factors, never changes the names of variables, and it never creates row names
+
+## It is possible for tibbles to have names not allowed in data frames
+
+tb <- tibble(
+  ':)' = "Smile",
+  ' ' = "Space",
+  '2000' = "Number"
+)  
+tb
+
+## Another way to create a tibble is with 'tribble()' whichc is short for transposed tibble. It is customized for data entry in code: column headings are defined by formulas (~)and entries are seperated by commas.
+
+tribble(
+  ~x, ~y, ~z,
+  #--/--/----   <- This markes it clear where the header is
+  "a", 2, 3.6,
+  "b", 1, 8.5
+)
+```
+
+## Tibbles versus Data Frames
+
+```{r}
+
+## The two main differences between tibbles and data frames are: printing and subsetting
+
+## Printing: tibbles have a refined print method that show only the first te rows and all columns that fit on the screen, whihc makes it much easier to work with large data.
+
+tibble(
+  a = lubridate::now() + runif(1e3) * 86400,
+  b = lubridate::today() + runif(1e3) * 30,
+  c = 1:1e3,
+  d = runif(1e3),
+  e = sample(letters, 1e3, replace = TRUE)
+)
+
+## If you do not want to use the tibble function you can also use the 'print()' function
+
+nycflights13::flights %>%
+  print(n = 10, width = Inf)
+```
+
+## Subsetting
+
+```{r}
+
+## If you want to pull out a single variable you will need to use '$ and "[[". [[ cane extract name or position, where $ only extracts by name
+
+df <- tibble(
+  x = runif(5),
+  y = rnorm(5)
+)
+
+## Extract by name
+
+df$x
+
+df[["x"]]
+
+## Or extract by posiiton
+
+df[[1]]
+
+## If you want to pipe this, you will need to use the "." placeholder
+
+df %>% .$x
+
+df %>% .[["x"]]
+
+## Some older data does not work as a tibble, if you encounter this, then change it back with
+
+class(as.data.frame(tb))
+```

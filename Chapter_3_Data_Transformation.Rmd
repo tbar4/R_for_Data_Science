@@ -1,0 +1,503 @@
+---
+title: "Chapter_3_R_for_Data_Science"
+author: "Trevor Barnes"
+date: "11/18/2017"
+output: html_document
+runtime: shiny
+---
+# Chapter 3 - Data Transformation with dplyr
+
+## nycflights13 - be sure that you have run install.packages(nycflights13)
+```{r, echo=FALSE}
+library(nycflights13)
+library(tidyverse)
+
+flights
+```
+
+## Filter Rows with filter()
+
+```{r, error=TRUE}
+
+## Filter for month and day being 1,1
+
+filter(flights, month ==1, day ==1)
+
+## Practice setting variables to the filters
+
+Jan1 <- filter(flights, month == 1, day == 1)
+(Dec25 <- filter(flights, month == 12, day == 25))
+
+## Be sure to use the '==' and not just '='. See how the following results in an error
+
+filter(flights, month = 1)
+
+## Another error you may receive happens with floating point numbers
+
+sqrt(2) ^ 2 == 2
+
+1/49 * 49 == 1
+
+## Try using the near function in these instances
+
+near(sqrt(2)^2, 2)
+
+near(1/49*49, 1)
+```
+
+## Logical Operators - & is 'and' - | is 'or' - ! is 'not'
+
+```{r}
+
+## Filter flights for Nov or Dec
+
+filter(flights, month == 11 | month == 12)
+
+## Retyping the same field over and over can be tedious
+## Try using the 'x %in% y' which will select every row where x is the value of y
+
+nov_dec <- filter(flights, month %in% c(11,12))
+
+## De Morgan's law states that !(x & y) is the same as !x | !y
+## Also, that !(x | y) is the same as !x & !y
+## The following formula can be written two different ways to find flights that were not delayed on departure or arrival by more than two hours
+
+filter(flights, !(arr_delay > 120 | dep_delay > 120))
+
+filter(flights, arr_delay <= 120, dep_delay <= 120)
+```
+
+## Missing Values
+
+```{r, error=TRUE}
+
+## Missing Values (NA) can be an issue in R, they represent unknown value so they become contagious, infecting the function resulting in an unknown output
+
+NA > 5
+
+10 == NA
+
+NA + 10
+
+NA / 2
+
+## The most confusing being
+
+NA == NA
+
+## To reduce confusion, lets pretend x is Mary's age and y is John's age and we don't know how old they are
+
+x <- NA
+
+y <- NA
+
+x == y
+
+## If you want to verify if a value is missing, use the 'is.na' function
+
+is.na(x)
+
+## Filter only includes rows where the condition is TRUE, it excldes both FALSE and NA
+
+df <- tibble(x = c(1, NA, 3))
+
+filter(df, x > 1)
+
+filter(df, is.na(x) | x > 1)
+```
+
+## Arrange Rows with arrange()
+
+```{r}
+
+## Example
+
+arrange(flights, year, month, day)
+
+## You can use 'desc()' to sort a column in descending order
+
+arrange(flights, desc(arr_delay))
+
+## Missing values are always sorted at the end
+
+df <- tibble(x = c(5,2,NA))
+
+arrange(df, x)
+
+arrange(df, desc(x))
+```
+
+## Select Columns with select()
+
+```{r}
+
+## This is very useful when working with many columns
+
+select(flights, year, month, day)
+
+## Select all columns between two columns
+
+select(flights, year:day)
+
+## Select all columns except from between those columns
+
+select(flights, - (year:day))
+
+## Some other helpful select 
+## starts_with("abc")
+## ends_with("xyz")
+## contains("ijk")
+## matches("(.)\\1")
+## num_range("x", 1:3) ## matches x1, x2, x3
+## see ?select for more details
+
+## select can also be used to rename variables, as 'rename()' is a version of select
+
+rename(flights, tail_num = tailnum)
+
+## Another option is to use 'select()' in conjunction with the 'everything()'hepler and is useful if you have variables you want to move at the start of the data frame
+
+select(flights, time_hour, air_time, everything())
+```
+
+## Add new variables with mutate()
+
+```{r}
+
+## Mutations work by adding new columns at the end of your dataset, it may be easier to first narrow down your dataset
+
+flights_sml <- select(flights, 
+                      year:day,
+                      ends_with("delay"),
+                      distance,
+                      air_time
+                      )
+
+mutate(flights_sml,
+       gain = arr_delay - dep_delay,
+       speed = distance / air_time * 60)
+
+## Note that you can refer to columns that you just created
+
+mutate(flights_sml,
+       gain = arr_delay - dep_delay,
+       hours = air_time / 60,
+       gain_per_hour = gain / hours
+       )
+
+## If you only want to keep the new variables than use transmute()
+
+transmute(flights,
+          gain = arr_delay - dep_delay,
+          hours = air_time / 60,
+          gain_per_hour = gain / hours)
+```
+
+## Useful Creation Functions
+
+```{r}
+
+## By now you should be familiar with the +, -, *, /, and ^ arithmatic operators
+
+## But modular arithematic operators are very powerful, too
+## '%/%' is integer division and '%%' is remainder
+
+transmute(flights,
+          dep_time,
+          hour = dep_time %/% 100,
+          minute = dep_time %% 100
+          )
+
+## Use 'log()', 'log2()', and 'log10()' to transform data ranging across multiple magnitudes
+
+## Use 'lead()' and 'lag()' that helps compute running differences
+
+(x <- 1:10)
+
+lag(x)
+
+lead(x)
+
+## Compute cumulative and rolling aggregates with the different cum- functions
+## 'sumsum()', 'cumprod()', 'cummin()', cummax()', 'cummean()'
+
+x
+
+cumsum(x)
+
+cummin(x)
+
+cummean(x)
+
+## Logical comparisons include <, <=, >, >=, !=
+
+## Ranking is also another powerful tool in sorting data
+
+y <- c(1, 2, 2, NA, 3, 4)
+
+min_rank(y)
+
+min_rank(desc(y))
+
+## If 'min_rank()' doesnt do what you want it to do, look at the variants with these functions
+## 'row_number()', 'dense_rank()', 'percent_rank()', 'cume_dist()', 'ntile()'
+
+row_number(y)
+
+dense_rank(y)
+
+percent_rank(y)
+
+cume_dist(y)
+```
+
+## Grouped Summaries with summarize()
+
+```{r}
+
+## This function will help summarize data by collapsing it to a single row
+
+summarize(flights, delay = mean(dep_delay, na.rm = TRUE))
+
+## Summzarize doesn't become very useful until we pair it with a group by
+
+by_day <- group_by(flights, year, month, day)
+
+summarize(by_day, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+## Combining Multiple Operations with Piping
+
+```{r}
+
+## Piping is  avery useful tool for preventing rewriting code over and over within a function, for example, look how we would normally script the following to summarize delays (HNL is an outlier so we remove it)
+
+by_dest <- group_by(flights, dest)
+
+delay <- summarize(by_dest,
+                   count = n(),
+                   dist = mean(distance, na.rm = TRUE),
+                   delay = mean(arr_delay, na.rm = TRUE)
+                   )
+delay <- filter(delay, count > 20, dest != "HNL")
+
+
+## Notice above how there are 3 different steps to prepare the data
+##    1) Group the flights by destination
+##    2) Summarize to compute average distance, average delay, and number of fights
+##    3) Filter to remove noisy points around Honolulu, which is twice as far, on average than          the other airports
+
+## Let us view the data in a plot
+
+ggplot(data = delay,
+       mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count), alpha = 1/3) +
+  geom_smooth(se = FALSE)
+
+## Let us try to make the code more effecient by 'piping' it using %>%
+
+delays <- flights %>%
+  group_by(dest) %>%
+  summarise(
+    count = n(),
+    dist = mean(distance, na.rm = TRUE),
+    delay = mean(arr_delay, na.rm = TRUE)
+  ) %>%
+  filter(count > 20, dest != "HNL")
+
+## Why do we keep using the 'na.rm = TRUE' argument? Let us take a look at our data without it
+
+flights %>%
+  group_by(year, month, day) %>%
+  summarize(mean = mean(dep_delay))
+
+## We get a lot of missing values, lets add back in the 'na.rm = TRUE'
+
+flights %>%
+  group_by(year, month, day) %>%
+  summarize(mean = mean(dep_delay), na.rm = TRUE)
+
+## We can attack this from a different angle and first remove the flights that have been cancelled
+
+not_cancelled <- flights %>%
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarize(mean = mean(dep_delay))
+```
+
+## Counts
+
+```{r}
+
+## When you are doing data aggregation, it is always good to do a count, 'n()' or count the nonmissing values, '!is.na(x)'. This way you can verify that you are not drawing conclusions based on small amounts of data
+
+delays <- not_cancelled %>%
+  group_by(tailnum) %>%
+  summarize(
+    delay = mean(arr_delay)
+  )
+
+ggplot(data = delays, mapping = aes(x = delay)) +
+  geom_freqpoly(binwidth = 10)
+
+## We can see that there are planes that have ana average delay of 300 minutes (5 hours), but this isn't giving us the whole picture. We can get a better look if we draw a scatterplot
+
+delays <- not_cancelled %>%
+  group_by(tailnum) %>%
+  summarize(
+    delay = mean(arr_delay, na.rm = TRUE),
+    n=n()
+  )
+
+ggplot(data = delays, mapping = aes(x = n, y = delay)) + 
+  geom_point(alpha = 1/10)
+
+## It can be helpful to filter out data with very few observations, let us now remove tailnums with less than 25 observations
+
+delays %>%
+  filter(n>25) %>%
+  ggplot(mapping = aes(x = n, y = delay)) +
+    geom_point(alpha = 1/10)
+
+## Let us practice with a different set of data, first, convert our data to a tibble so it looks nice
+
+batting <- as.tibble(Lahman::Batting)
+
+batters <- batting %>%
+  group_by(playerID) %>%
+  summarize(
+    ba = sum(H, na.rm = TRUE) / sum(AB, na.rm = TRUE),
+    ab = sum(AB, na.rm = TRUE)
+  )
+
+batters %>%
+  filter(ab > 100) %>%
+  ggplot(mapping = aes(x = ab, y = ba)) +
+    geom_point() +
+    geom_smooth(se = FALSE)
+
+## We can also exaplin some of the outlying data by arranging, in this case, we can explain away people who have extermely high batting averages as people who were lucky, not skilled
+
+batters %>%
+  arrange(desc(ba))
+```
+
+## Useful Summary Functions
+
+```{r}
+
+## Measures of Location include the 'mean()' and 'median()' functions, which helps in combining aggregation and subsetting the data
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarize(
+    ## Average Delay
+    avg_delay1 = mean(arr_delay),
+    ## Average Positive Delay (Removes 0's)
+    avg_delay2 = mean(arr_delay[arr_delay > 0])
+  )
+
+## Measures of Spread include the 'sd()', 'IQR()', and 'mad()' fucntions and are useful if you have outliers
+
+not_cancelled %>%
+  group_by(dest) %>%
+  summarize(distance_sd = sd(distance)) %>%
+  arrange(desc(distance_sd))
+
+
+## Measures of Rank include the 'min()', 'quantile()', and 'max()' functions
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarize(
+    first = min(dep_time),
+    last = max(dep_time)
+  )
+
+## Measures of Position include the 'first()', 'ntn()', and 'last()' functions
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarize(
+    first_dep = first(dep_time),
+    last_dep = last(dep_time)
+  )
+
+## These functions are complimentary to filtering on ranks. Filtering gives you all variables with each observation in a seperate row
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  mutate(r = min_rank(desc(dep_time))) %>%
+  filter(r %in% range(r))
+
+## Counts are useful for taking no arguments, but returning the total count of a group like 'n()', or to count non-missing values use 'is.na()'. To count unique (distinct) values use 'n_distinct()'
+
+not_cancelled %>%
+  group_by(dest) %>%
+  summarize(carriers = n_distinct(carrier)) %>%
+  arrange(desc(carriers))
+
+## If you just want a simple count
+
+not_cancelled %>%
+  count(dest)
+
+## You can additionally provide a weight variable
+
+not_cancelled %>%
+  count(tailnum, wt=distance)
+
+## Counts and proportions of logical values when used with numeric functions convert True to 1 and False to 0. This makes the 'sum()' and 'mean()' value very useful
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarize(n_early = sum(dep_time < 500))
+
+## What proportion of flights are delayed by more than an hour
+
+not_cancelled %>%
+  group_by(year, month, day) %>%
+  summarize(hour_perc = mean(arr_delay > 60))
+
+## Grouping by multiple variables can help you easily peel off variables that makes it progressively earlier to roll up a dataset
+
+daily <- group_by(flights, year, month, day)
+
+per_day <- summarize(daily, flights = n())
+
+per_month <- summarize(per_day, flights = sum(flights))
+
+per_year <- summarize(per_month, flights = sum(flights))
+
+## Ungrouping can be helpful, in this case to no longer group flights by date
+
+daily %>%
+  ungroup() %>%
+  summarize(flights=n())
+```
+
+## Grouped Mutates
+
+```{r}
+
+## Grouping is most useful in ocnjunction with 'summarize()', but you can also do convenient operations with 'mutate()' and 'filter()'
+
+flights_sml %>%
+  group_by(year, month, day) %>%
+  filter(rank(desc(arr_delay)) < 10)
+
+## Filter all groups bigger than a threshold
+
+popular_dests <- flights %>%
+  group_by(dest) %>%
+  filter(n() > 365)
+
+## Standardize to compute per group metrics
+
+popular_dests %>%
+  filter(arr_delay > 0) %>%
+  mutate(prop_delay = arr_delay / sum(arr_delay)) %>%
+  select(year:dest, dest, arr_delay, prop_delay)
+```
