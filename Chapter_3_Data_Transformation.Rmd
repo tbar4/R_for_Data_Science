@@ -3,7 +3,6 @@ title: "Chapter_3_R_for_Data_Science"
 author: 
 date: "11/18/2017"
 output: html_document
-runtime: shiny
 ---
 # Chapter 3 - Data Transformation with dplyr
 
