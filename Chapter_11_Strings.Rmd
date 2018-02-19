@@ -1,6 +1,6 @@
 ---
 title: "Chapter_11_R_for_Data_Science"
-author: "Trevor Barnes"
+author: 
 date: "November 30, 2017"
 output: html_document
 ---
