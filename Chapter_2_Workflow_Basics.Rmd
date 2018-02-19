@@ -1,6 +1,6 @@
 ---
 title: "Chapter_2_R_for_Data_Science"
-author: "Trevor Barnes"
+author: 
 date: "11/17/2017"
 output: html_document
 runtime: shiny
