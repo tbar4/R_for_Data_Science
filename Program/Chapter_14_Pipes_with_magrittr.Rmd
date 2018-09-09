@@ -1,0 +1,64 @@
+---
+title: "Chapter 14: Pipes with magrittr"
+author: "Trevor Barnes"
+date: "September 8, 2018"
+output: html_document
+---
+
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(nycflights13)
+library(lubridate)
+library(magrittr)
+library(dplyr)
+library(pryr)
+```
+
+```{r}
+## Lets look at actual piping
+
+diamonds <- ggplot2::diamonds
+
+## Now mutate with piping
+diamonds2 <- diamonds %>%
+  mutate(price_per_carat = price / carat)
+
+object_size(diamonds)
+
+object_size(diamonds2)
+
+object_size(diamonds, diamonds2)
+
+## Why do both take up only 3.89mb when they are 3.46mb and 3.89mb respectively?
+## Since they have columns in common they share the info to save space
+
+## To build a function think of it in terms on the following example
+
+# foo_foo %>%
+#    hop(through == forest) %>%
+#      scoop(up == field_mouse) %>%
+#        bop(on == head )
+
+## When you run a pipe like the previous one magrittr does something similar to this:
+
+# my_pipe <- function(.)  {
+#   . <- hop(., through == forest)
+#   . <- scoop(., up == field_mouse)
+#   bop(., on == head)
+#}
+
+# my_pipe(foo)
+
+# In piping assigned variables are temporary and will not be stroed in your environment
+```
+
+### When not to use pipes
+
+```{r}
+
+## When your pipes are longer than 10 steps, in this case create intermediate objects
+
+## You have multiple inputs or outputs
+
+## You are starting to think about a directed graph with a complex dependency or structure
