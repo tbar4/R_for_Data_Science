@@ -1,0 +1,429 @@
+---
+title: "Chapter 13: Dates and Times with lubridate"
+author: "Trevor Barnes"
+date: "March 8, 2018"
+output: html_document
+---
+
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(nycflights13)
+library(lubridate)
+```
+
+### Creating Date/Times
+
+There are 3 different types of date/time data that refer to an instant in time:
+
+  - A *date*. Tibble print this sa <date>
+  - A *time* within a day. Tibbles print this as <time>
+  - A *date-time* is a date plus a time: it uniquely identifies an instant in time (typically to the nearest second) tibbles print this as <dttm>. Elsewhere in R these are called POSIXct
+  
+We are only going to focus on dates and date-times as R doesn't have a native class for storing times. If you need one you can use the *hms* package.
+
+To get the current date or date time you can use today() or now()
+```{r}
+today()
+
+now()
+```
+
+Otherwise there are 3 ways to create a date/time:
+
+  *From a string
+  *From individual date-time components
+  *From existing date/time object
+
+### From Strings
+
+You can use the helpers in lubridate that automatically work out the format once you specifythe order of the component. To use them identify the order in which year, month, and day appear in your dates, then arrange "y", "m", and "d"in the same order:
+
+```{r}
+ymd("2017-01-31")
+
+mdy("January 31st, 2017")
+
+dmy("31-Jan-2017")
+```
+
+These functions also take unquoted numbers. This is the most concise way to create a single date/time object, as you might need when filtering date/time data. ymd() is short and unambigious:
+
+```{r}
+ymd(20170131)
+```
+
+ymd() and friends create dates. To create a date-time, add an underscore and one or more "h,"m, and"s" to the name of the parsing function:
+
+```{r}
+ymd_hms("2017-01-31 20:11:59")
+
+mdy_hm("01/31/2017 08:01")
+```
+
+You can force the creation of a date-time from a date by supplying a time-zone:
+
+```{r}
+ymd(20170131, tz = "UTC")
+```
+
+### From Individual Components
+
+Instead of a singlestring, sometimes you'll have the individual components of the date-time spread across multiple columns. This is what we have in the flight data:
+
+```{r}
+flights %>%
+  select(year, month, day, hour, minute)
+```
+
+To create a date/time from this sort of input, use make_date() for dates, or make_datetime() for date-times:
+
+```{r}
+flights %>%
+  select(year, month, day, hour, minute) %>%
+  mutate(
+    departure = make_datetime(year, month, day, hour, minute)
+  )
+```
+
+Let's do the same thing for each of the four time columns in -flights-. The times are represented in a slightly odd format, so we use modulus arithmetic to pull out the hour and minute components. Once I've created the date-time variables, I focus in on the variables we'll explore in the rest of the chapter:
+
+```{r}
+make_datetime_100 <- function(year, month, day, time){
+  make_datetime(year, month, day, time %/% 100, time %% 100)
+}
+
+flights_dt <- flights %>%
+  filter(!is.na(dep_time), !is.na(arr_time)) %>%
+  mutate(
+    dep_time = make_datetime_100(year, month, day, dep_time),
+    arr_time = make_datetime_100(year, month, day, arr_time),
+    sched_dep_time = make_datetime_100(year, month, day, sched_dep_time),
+    sched_arr_time = make_datetime_100(year, month, day, sched_arr_time)
+  ) %>%
+  select(origin, dest, ends_with("delay"), ends_with("time"))
+
+flights_dt
+```
+
+With this data, we can visualize the distibution of departure times across the year:
+
+```{r}
+flights_dt %>%
+  ggplot(aes(dep_time)) +
+  geom_freqpoly(binwidth = 86400) ## 86400 seconds = 1 day 
+```
+
+Or within a single day
+
+```{r}
+flights_dt %>%
+  filter(dep_time < ymd(20130102)) %>%
+  ggplot(aes(dep_time)) +
+  geom_freqpoly(binwidth = 600) ## 600 seconds= 10 minutes
+```
+
+### From Other Types
+
+You may want to switch between a date-time and a date. That's the job of *as_datetime()* and *as_date()*:
+
+```{r}
+as_datetime(today())
+
+as_date(now())
+```
+
+Sometimes you'll get date/times as numeric offsets from the "Unix Epoch" 1970-01-01. If the offset is in seconds, use *as_datetime()*; if it's in days, use *as_date()*:
+
+```{r}
+as_datetime(60*60*10)
+
+as_date(365*10+2)
+```
+
+### Date-Time Componenets
+
+You can pull out individual parts of the date with the accessor functions year(), month(), mday()(day of the month), yday()(day of the year), wday()(day of the week), hour(), minute(), second():
+
+```{r}
+datetime <- ("2016-07-08 12:34:56")
+
+year(datetime)
+
+month(datetime)
+
+mday(datetime)
+
+yday(datetime)
+
+wday(datetime)
+```
+
+For month() and wday() you can set *label = TRUE* to return the abbreviated name of the monthor day of the week. Set *abbr = FALSE* to return the full name:
+
+```{r}
+month(datetime, label = TRUE)
+
+wday(datetime,label = TRUE, abbr = FALSE)
+```
+
+We can use the *wday()* to see that more flights depart during the week than on the weekend:
+
+```{r}
+flights_dt %>%
+  mutate(wday = wday(dep_time, label = TRUE)) %>%
+  ggplot(aes(x=wday)) +
+    geom_bar()
+```
+
+You can find interesting patterns within the data. For example, flgihts leaving in the 20-30 and 50-60 have musch lower delays than the rest of the hour
+
+```{r}
+flights_dt %>%
+  mutate(minute = minute(dep_time)) %>%
+  group_by(minute) %>%
+  summarize(
+    avg_delay = mean(arr_delay, na.rm = TRUE),
+    n=n()) %>%
+  ggplot(aes(minute, avg_delay)) +
+    geom_line()
+```
+
+If we look at scheduled departue we don't see such a strong pattern
+
+```{r}
+sched_dep <- flights_dt %>%
+  mutate(minute = minute(sched_dep_time)) %>%
+  group_by(minute) %>%
+  summarize(
+    avg_delay = mean(arr_delay, na.rm = TRUE),
+    n=n())
+
+ggplot(sched_dep, aes(minute,avg_delay)) +
+  geom_line()
+```
+
+So why do we see this pattern, it may be because we like leaving at nice rounded departure times
+
+```{r}
+ggplot(sched_dep, aes(minute, n)) +
+  geom_line()
+```
+
+### Rounding
+
+An alternative approach to plotting individual components is to round the date to a nearby unit of time, with *floor_date()*, *round_date()*, and *ceiling_date()*
+
+```{r}
+flights_dt %>%
+  count(week = floor_date(dep_time, "week")) %>%
+  ggplot(aes(week,n)) +
+    geom_line()
+```
+
+### Setting Components
+
+You can also use each accessor functionto set the component of a date/time: 
+
+```{r}
+(datetime <- ymd_hms("2016-07-08 12:34:56"))
+
+year(datetime) <- 2020
+datetime
+
+month(datetime) <- 01
+datetime
+
+hour(datetime) <- hour(datetime) + 1
+```
+
+Alternatively, rather than modifying in place, you can create a new date-time with update. This also allows you to set multiple values at once:
+
+```{r}
+update(datetime, year = 2020, month = 2, mday = 2, hour = 2)
+```
+
+If the values are too big they will roll over
+
+```{r}
+ymd("2015-02-01") %>%
+  update(mday = 30)
+
+ymd("2015-02-01") %>%
+  update(hour = 400)
+```
+
+You can use update() to show the distribution of flights across the course of the day for every day of the year:
+
+```{r}
+flights_dt %>%
+  mutate(dep_hour = update(dep_time, yday = 1)) %>%
+  ggplot(aes(dep_hour)) + 
+    geom_freqpoly(binwidth = 300)
+```
+
+### Time Spans
+
+Three important classes that represent time spans:
+
+  *Durations, which represnt an exact number of seconds
+  *Periods, which represent human units like weeks and months
+  *Intervals, which represents a starting and ending point
+
+### Durations
+
+In R, when you subtract two dates, you get a difftime object:
+
+```{r}
+## How old is Hadley?
+
+h_age <- today() - ymd(19791014)
+h_age
+```
+
+Instead you can use difftime functions
+
+```{r}
+as.duration(h_age)
+
+dseconds(15)
+
+dminutes(10)
+
+dhours(c(12,24))
+
+ddays(0:5)
+
+dweeks(3)
+
+dyears(1)
+```
+
+You can add or multiply durations
+
+```{r}
+2 * dyears(1)
+
+dyears(1) + dweeks(12) + dhours(15)
+```
+
+You can add or subtract durations to and from days
+
+```{r}
+tomorrow <- today() + ddays(1)
+
+last_year <- today() - dyears(1)
+```
+
+However, cause durations represent an exact number of seconds, sometimes you might get an unexpected result:
+
+```{r}
+one_pm <- ymd_hms(
+  "2016-03-12 13:00:00",
+  tz = "America/New_York"
+)
+
+one_pm 
+
+one_pm + ddays(1)
+```
+
+### Periods
+
+We can use *periods* to solve the issue of duration calculating in seconds
+
+```{r}
+one_pm
+
+one_pm + days(1)
+```
+
+Like *Durations*, periods can be created with a number of friendly constructor functions:
+
+```{r}
+seconds(15)
+
+minutes(10)
+
+hours(c(12,24))
+
+days(7)
+
+months(1:6)
+
+weeks(3)
+
+years(1)
+```
+
+You can add and multiply periods:
+
+```{r}
+10 * (months(6) + days(1))
+
+days(50) + hours(25) + minutes(2)
+```
+
+Also, you can add them to dates. Compared to durations, periods are more likely to do what you expect:
+
+```{r}
+## A leap year
+
+ymd("2016-01-01") + dyears(1)
+
+ymd("2016-01-01") + years(1)
+
+## Daylights Saving Time
+
+one_pm + ddays(1)
+
+one_pm + days(1)
+```
+
+We can use this to fix some oddities in the *flights* data where some planes arrive before they depart
+
+```{r}
+flights_dt %>%
+  filter(arr_time < dep_time)
+```
+
+These are overnight flights, we can fix this by adding 1 day to the arrival of every overnight flight
+
+```{r}
+flights_dt <- flights_dt %>%
+  mutate(
+    overnight = arr_time < dep_time,
+    arr_time = arr_time + days(overnight + 1),
+    sched_arr_time = sched_arr_time + days(overnight + 1)
+  )
+  
+```
+
+Now all of our flights obey the law of physics
+
+```{r}
+flights_dt %>%
+  filter(overnight, arr_time < dep_time)
+```
+
+### Intervals
+
+What happens if we need to divide years by days?
+
+```{r}
+years(1) / days(1)
+```
+
+If you want a more accurate measurement, you'll have to use an *interval*. An interval duration with a starting point; that makes it precise so you can determine exactly how long it is:
+
+```{r}
+next_year <- today() + years(1)
+
+(today() %--% next_year) / ddays(1)
+```
+
+To find out how many periodss fall into an interval, you need to use integer division:
+
+```{r}
+(today() %--% next_year) %/% days(1)
+```
